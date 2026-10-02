@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPKsearch - بڕگەیا گەڕیانێ یا کوردی (بەهدینی)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46',
+                            900: '#064e3b',
+                            accent: '#f59e0b'
+                        }
+                    },
+                    fontFamily: {
+                        kurdish: ['Vazirmatn', 'Noto Naskh Arabic', 'Tahoma', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts for Kurdish Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Firebase SDK (Compat Version for Easy Browser Usage) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        body {
+            font-family: 'Vazirmatn', 'Noto Naskh Arabic', sans-serif;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .dark .glass-card {
+            background: rgba(17, 24, 39, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #10b981;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-300">
+
+    <!-- Header / Navbar -->
+    <header class="sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- Logo & Brand -->
+            <div id="brand-logo" class="flex items-center gap-3 select-none">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-amber-400 p-0.5 shadow-lg shadow-emerald-500/20">
+                    <div class="w-full h-full bg-slate-900 rounded-[10px] flex items-center justify-center font-black text-emerald-400 text-lg tracking-wider">
+                        GPK
+                    </div>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-xl tracking-tight flex items-center gap-2">
+                        <span>GPKsearch</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-medium">بەهدینی</span>
+                    </h1>
+                    <p class="text-[10px] text-slate-500 dark:text-slate-400">گەڕیان ب زمانێ کوردی (بەهدینی - سۆرانی - English)</p>
+                </div>
+            </div>
+
+            <!-- Actions Right -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <button id="btn-key-settings" onclick="promptForNewApiKey()" class="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-500 hover:bg-amber-500/20 text-xs font-semibold flex items-center gap-1.5 transition-colors" title="گۆڕینا کلیلا Gemini AI">
+                    <i class="fa-solid fa-key"></i>
+                    <span class="hidden sm:inline">کلیلا AI</span>
+                </button>
+                <!-- Dark Mode Toggle -->
+                <button id="btn-theme-toggle" class="p-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-emerald-500 transition-colors">
+                    <i class="fa-solid fa-moon dark:hidden"></i>
+                    <i class="fa-solid fa-sun hidden dark:block text-amber-400"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-8">
+
+        <!-- Hero Search Section -->
+        <section class="text-center max-w-3xl mx-auto w-full pt-4 pb-2">
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-200/80 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/60 text-xs text-slate-600 dark:text-slate-300 mb-6 shadow-sm">
+                <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+                <span>تۆڕا گەڕیانێ یا پاراستی ب کلیلێت ناڤخۆیی</span>
+            </div>
+
+            <h2 class="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight mb-4 leading-tight">
+                ل هەمى زانیاریان بگەڕیا ب زڤڕینا <span class="gradient-text">کوردیا بەهدینی</span>
+            </h2>
+            <p class="text-sm sm:text-base text-slate-600 dark:text-slate-400 mb-8 max-w-xl mx-auto">
+                ماڵپەرێ GPKsearch داهێنانا هەوەیە بۆ لێگەڕیانا ب زمانێ کوردی دهۆکی/بەهدینی دگەل وەرگێڕانا دەمەکی بۆ سۆرانی و ئینگلیزی.
+            </p>
+
+            <!-- Search Form Container -->
+            <form id="search-form" class="relative max-w-2xl mx-auto mb-4">
+                <div class="relative flex items-center shadow-2xl rounded-2xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
+                    <i class="fa-solid fa-magnifying-glass text-slate-400 text-lg px-4"></i>
+                    <input type="text" id="search-input" dir="rtl" 
+                        placeholder="ل کەسایەتی، باژێر، کولتوور، یان بابەتەکێ بگەڕیا... (م. دهۆک، نەورۆز)" 
+                        class="w-full py-4 pr-1 pl-12 bg-transparent text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none text-base sm:text-lg font-medium">
+                    
+                    <button type="submit" class="absolute left-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-md transition-all active:scale-95">
+                        <span>بگەڕیا</span>
+                        <i class="fa-solid fa-arrow-left text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- Virtual Kurdish Keypad -->
+                <div class="flex flex-wrap items-center justify-center gap-1.5 mt-3 text-xs">
+                    <span class="text-slate-400 dark:text-slate-500 text-[11px] ml-1">پێتێن تایبەت:</span>
+                    <button type="button" class="kurdish-key px-2.5 py-1 bg-slate-200 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-lg transition-colors font-bold">ڤ</button>
+                    <button type="button" class="kurdish-key px-2.5 py-1 bg-slate-200 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-lg transition-colors font-bold">ۆ</button>
+                    <button type="button" class="kurdish-key px-2.5 py-1 bg-slate-200 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-lg transition-colors font-bold">ێ</button>
+                    <button type="button" class="kurdish-key px-2.5 py-1 bg-slate-200 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-lg transition-colors font-bold">ڵ</button>
+                    <button type="button" class="kurdish-key px-2.5 py-1 bg-slate-200 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-lg transition-colors font-bold">ڕ</button>
+                    <button type="button" class="kurdish-key px-2.5 py-1 bg-slate-200 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-lg transition-colors font-bold">پ</button>
+                    <button type="button" class="kurdish-key px-2.5 py-1 bg-slate-200 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-lg transition-colors font-bold">چ</button>
+                    <button type="button" class="kurdish-key px-2.5 py-1 bg-slate-200 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-lg transition-colors font-bold">ژ</button>
+                    <button type="button" class="kurdish-key px-2.5 py-1 bg-slate-200 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white rounded-lg transition-colors font-bold">گ</button>
+                </div>
+            </form>
+
+            <!-- Quick Categories -->
+            <div id="quick-tags" class="flex flex-wrap justify-center gap-2 mt-4 text-xs">
+                <button class="tag-btn px-3 py-1.5 rounded-full bg-slate-200/70 dark:bg-slate-800/70 hover:bg-emerald-500 hover:text-white transition-all" data-query="دهۆک">📍 دهۆک</button>
+                <button class="tag-btn px-3 py-1.5 rounded-full bg-slate-200/70 dark:bg-slate-800/70 hover:bg-emerald-500 hover:text-white transition-all" data-query="زاخۆ">🏰 زاخۆ</button>
+                <button class="tag-btn px-3 py-1.5 rounded-full bg-slate-200/70 dark:bg-slate-800/70 hover:bg-emerald-500 hover:text-white transition-all" data-query="نەورۆز">🔥 نەورۆز</button>
+                <button class="tag-btn px-3 py-1.5 rounded-full bg-slate-200/70 dark:bg-slate-800/70 hover:bg-emerald-500 hover:text-white transition-all" data-query="ئامێدی">🏔️ ئامێدی</button>
+                <button class="tag-btn px-3 py-1.5 rounded-full bg-slate-200/70 dark:bg-slate-800/70 hover:bg-emerald-500 hover:text-white transition-all" data-query="ئەحمەدێ خانی">📚 ئەحمەدێ خانی</button>
+                <button class="tag-btn px-3 py-1.5 rounded-full bg-slate-200/70 dark:bg-slate-800/70 hover:bg-emerald-500 hover:text-white transition-all" data-query="کوردستان">☀️ کوردستان</button>
+            </div>
+        </section>
+
+        <!-- Search Results Section -->
+        <section id="results-section" class="w-full max-w-5xl mx-auto space-y-6">
+            <!-- Loading Indicator -->
+            <div id="loading-spinner" class="hidden py-16 text-center">
+                <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-emerald-500 border-t-transparent"></div>
+                <p class="mt-4 text-slate-500 dark:text-slate-400 font-medium">لێگەڕیان و ئامادەکرنا ئەنجامان...</p>
+            </div>
+
+            <!-- Header Info for Results -->
+            <div id="results-header" class="hidden flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                <div class="text-sm font-bold text-slate-700 dark:text-slate-300">
+                    ئەنجامێن لێگەڕیانێ بۆ: <span id="current-search-term" class="text-emerald-500 font-extrabold"></span>
+                </div>
+                <div class="text-xs text-slate-500 flex items-center gap-2">
+                    <span id="results-count">0</span> ئەنجام هاتنە لیتستکرن
+                    <button id="ai-generate-btn" class="hidden text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 px-3 py-1 rounded-lg border border-amber-500/30 transition-all font-semibold flex items-center gap-1">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>داخوازا ئەنجامەکێ AI بەهدینی بکه</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Results List Container -->
+            <div id="results-container" class="grid grid-cols-1 gap-6">
+                <!-- Welcome Banner state before searching -->
+                <div id="welcome-state" class="glass-card rounded-2xl p-8 text-center border border-slate-200 dark:border-slate-800">
+                    <div class="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 text-emerald-500 text-2xl">
+                        <i class="fa-solid fa-compass-drafting"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">بەخێرهاتی بۆ GPKsearch engine</h3>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm max-w-lg mx-auto mb-6">
+                        تۆ دشێی هەر پەیڤەک یان زانیاریەکێ ل ژۆر بنڤیسی. داتاژێدەرێ مە زانیاریان ب سێ زمانان پیشان ددەت: کوردیا بەهدینی، کوردیا سۆرانی، و ئینگلیزی.
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto text-right">
+                        <div class="p-4 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                            <i class="fa-solid fa-language text-emerald-500 mb-2 text-lg"></i>
+                            <h4 class="font-bold text-sm mb-1">کوردیا بەهدینی</h4>
+                            <p class="text-xs text-slate-500">زانیاریێن سەرەکی ب دیالێکتا بادینی ل دەڤەرا بادینان.</p>
+                        </div>
+                        <div class="p-4 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                            <i class="fa-solid fa-globe text-teal-500 mb-2 text-lg"></i>
+                            <h4 class="font-bold text-sm mb-1">کوردیا سۆرانی</h4>
+                            <p class="text-xs text-slate-500">وەرگێڕانا دەستبەجێ بۆ دیالێکتا سۆرانی.</p>
+                        </div>
+                        <div class="p-4 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                            <i class="fa-solid fa-font text-amber-500 mb-2 text-lg"></i>
+                            <h4 class="font-bold text-sm mb-1">English Language</h4>
+                            <p class="text-xs text-slate-500">Instant accurate English conversion & translation.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Toast Notification UI -->
+    <div id="toast" class="fixed bottom-6 left-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-emerald-500/40 flex items-center gap-3 text-xs">
+            <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+            <span id="toast-msg" class="font-medium">دەق هاتە کۆپیکرن!</span>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-6 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-2">
+                <span class="font-black text-emerald-500">GPKsearch</span>
+                <span>• موتورێ لێگەڕیانا کوردی بەهدینی</span>
+            </div>
+            
+            <!-- MANDATORY COPYRIGHT CLAIM FOR GPK -->
+            <div class="font-semibold text-slate-600 dark:text-slate-300 tracking-wide">
+                © <span id="year">2026</span> <span class="text-emerald-500 font-extrabold">GPK</span>. All Copyrights Saved to GPK.
+            </div>
+
+            <div class="flex items-center gap-4 text-slate-400">
+                <span class="hover:text-emerald-500 cursor-pointer transition-colors">Badini</span>
+                <span>•</span>
+                <span class="hover:text-emerald-500 cursor-pointer transition-colors">Sorani</span>
+                <span>•</span>
+                <span class="hover:text-emerald-500 cursor-pointer transition-colors">English</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Default local knowledge base
+        const DEFAULT_KNOWLEDGE = [
+            {
+                id: '1',
+                title_badini: 'دهۆک (Duhok)',
+                title_sorani: 'دهۆک',
+                title_english: 'Duhok City',
+                category: 'باژێر و جوگرافیا',
+                content_badini: 'دهۆک باژێرەکێ جوانێ هەرێما کوردستانێ یە ل باکوورێ عیراقێ. دکەڤیتە ناڤبەرا سێ چیایان دا (چیایێ سپی، چیایێ زاوا، و چیایێ مەتین) و ب باژێرێ گەشتیاری، ئەمن و ئاسایش، و ترێ و زەیتوونان دهێتە نیاسین.',
+                content_sorani: 'دهۆک شارێکی جوانی هەرێمی کوردستانە لە باکووری عێراق. دەکەوێتە نێوان سێ شاخەوە (شاخێ سپی، شاخێ زاوا، و شاخێ مە تین) و بە شارێکی گەشتیاری و هێمن ناسراوە.',
+                content_english: 'Duhok is a vibrant city in the Kurdistan Region of Iraq, nestled between beautiful mountain ranges. It is known for its tourism, rich culture, tranquility, and agricultural production.'
+            },
+            {
+                id: '2',
+                title_badini: 'زاخۆ (Zakho)',
+                title_sorani: 'زاخۆ',
+                title_english: 'Zakho City',
+                category: 'باژێر و جوگرافیا',
+                content_badini: 'زاخۆ باژێرەکێ دیرۆکی و سەرپەرشتیاریا سەربەخۆیە ل پارێزگەها دهۆکێ. پڕا د دەلالێ (پرسا دەلال) کو نیشانا باژێڕی یە یەک ژ کەڤنترین پرێن بەری یێن کوردستانێ یە سەر ڕووبارێ خابوور.',
+                content_sorani: 'زاخۆ شارێکی مێژوویی سەربەخۆیە لە پارێزگای دهۆک. پردی دەلال کە هێمای شارەکەیە یەکێک لە کۆنترین پردە بەردینەکانی کوردستانە لەسەر ڕووباری خابوور.',
+                content_english: 'Zakho is an independent administration and historical town in Duhok Governorate, located near the Turkish border. It features the famous ancient Delal Bridge over the Khabur River.'
+            },
+            {
+                id: '3',
+                title_badini: 'نەورۆز (Newroz)',
+                title_sorani: 'نەورۆز',
+                title_english: 'Newroz Festival',
+                category: 'کولتوور و جژن',
+                content_badini: 'جژنا نەورۆزێ سەرا ساڵا نوو یا کوردی یە کو دکەڤیتە ٢١ێ ئادارێ (ئادارا هەمیان). د ڤێ جژنێ دا ئاگرێ نەورۆزێ ل سەر چیایان دهێتە هەڵکرن کو نیشانا ئازادی، سەرکەفتن و سەرهەڵدانا کاوەیێ ئاسنگەرە.',
+                content_sorani: 'جەژنی نەورۆز سەری ساڵی نوێی کوردییە کە دەکەوێتە ٢١ی ئادار. لەم جەژنەدا ئاگری نەورۆز لەسەر شاخەکان دەگیرسێندرێت کە هێمای ڕزگاری و سەرکەوتنە.',
+                content_english: 'Newroz is the Kurdish New Year celebrated on March 21st. It symbolizes freedom, rebirth of nature, and victory, marked by lighting bonfires on mountaintops.'
+            },
+            {
+                id: '4',
+                title_badini: 'ئەحمەدێ خانی (Ehmedê Xanî)',
+                title_sorani: 'ئەحمەدی خانی',
+                title_english: 'Ehmedê Xanî',
+                category: 'دیرۆک و کەسایەتی',
+                content_badini: 'ئەحمەدێ خانی (١٦٥٠ - ١٧٠٧) هۆزانڤان، فەیلەسوف و زانایەکێ مەزنێ کورد بوو ل دەڤەرا بادینان. شاهکارا وی یا نەمر شاهۆزانا "مەم و زێن"ە کو ئێک ژ بەرهەمێن هەرە نایابێن ئەدەبێ کوردی یە.',
+                content_sorani: 'ئەحمەدی خانی شاعیر و فەیلەسوفی گەورەی کورد بوو. شاکاری نەمر و ناسراوی ڕۆمانی شێعری "مەم و زێن"ی نووسیوە کە بە لوتکەی ئەدەبی کوردی هەژمار دەکرێت.',
+                content_english: 'Ehmedê Xanî (1650–1707) was a renowned Kurdish poet, scholar, and philosopher. He wrote the famous romantic epic "Mem û Zîn", a masterpiece of classic Kurdish literature.'
+            },
+            {
+                id: '5',
+                title_badini: 'ئامێدی (Amedi)',
+                title_sorani: 'ئامێدی',
+                title_english: 'Amadiya / Amedi',
+                category: 'باژێر و جوگرافیا',
+                content_badini: 'ئامێدی باژێرۆکەکێ شوێنەواری دێرینە کو ل سەر لووتکەیا چیایەکێ پڕ ئاشکرا ئاڤابوویە ل پارێزگەها دهۆکێ. مێژوویا وی بۆ سەردەمێ ئیمپراتۆریەتا ئاشووری و میرگەها بەهدینان بزڤڕیت.',
+                content_sorani: 'ئامێدی شارۆچکەیەکی مێژوویی دێرینە کە لەسەر لووتکەی شاخێکی تەخت دروستکراوە لە پارێزگای دهۆک. مێژووەکەی دەگەڕێتەوە بۆ سەردەمی میرنشینی بەهدینان.',
+                content_english: 'Amedi (Amadiya) is a stunning historical citadel town perched atop a flat mountain plateau in Duhok governorate, dating back thousands of years to ancient empires and the Badinan Principality.'
+            }
+        ];
+
+        // 🤖 GEMINI AI API KEY
+        // Leave empty string so system auto-provides key in Canvas runtime, or set manually for custom domain
+        const GEMINI_API_KEY = ""; 
+
+        // Default Firebase Config (Internal background connectivity)
+        const DEFAULT_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyBludlWIMRMaChDHpD_C7aoMzMyfD2n_9M",
+            authDomain: "es-group-bank.firebaseapp.com",
+            projectId: "es-group-bank",
+            storageBucket: "es-group-bank.firebasestorage.app",
+            messagingSenderId: "872733122372",
+            appId: "1:872733122372:web:6ad20797361d78b80f8111"
+        };
+
+        // App State
+        let localKnowledge = [...DEFAULT_KNOWLEDGE];
+        let firebaseDb = null;
+        let lastSearchTerm = "";
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initApp();
+            setupEventListeners();
+        });
+
+        function initApp() {
+            // Connect automatically to Firebase in background
+            connectFirebase(DEFAULT_FIREBASE_CONFIG.apiKey, DEFAULT_FIREBASE_CONFIG.projectId);
+
+            // Restore custom local entries
+            const customStored = localStorage.getItem('gpk_custom_knowledge');
+            if (customStored) {
+                try {
+                    const parsed = JSON.parse(customStored);
+                    localKnowledge = [...DEFAULT_KNOWLEDGE, ...parsed];
+                } catch (e) {
+                    console.error("Error loading local storage entries", e);
+                }
+            }
+
+            document.getElementById('year').textContent = new Date().getFullYear();
+        }
+
+        function connectFirebase(apiKey, projectId) {
+            try {
+                if (window.firebase) {
+                    const fbConfig = {
+                        apiKey: apiKey,
+                        authDomain: `${projectId}.firebaseapp.com`,
+                        projectId: projectId,
+                        storageBucket: DEFAULT_FIREBASE_CONFIG.storageBucket,
+                        messagingSenderId: DEFAULT_FIREBASE_CONFIG.messagingSenderId,
+                        appId: DEFAULT_FIREBASE_CONFIG.appId
+                    };
+                    
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(fbConfig);
+                    }
+                    firebaseDb = firebase.firestore();
+                    fetchFirebaseData();
+                }
+            } catch (err) {
+                console.error("Firebase connection error:", err);
+            }
+        }
+
+        async function fetchFirebaseData() {
+            if (!firebaseDb) return;
+            try {
+                const snapshot = await firebaseDb.collection('gpk_knowledge').get();
+                const fbData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (fbData.length > 0) {
+                    mergeKnowledge(fbData);
+                }
+            } catch (err) {
+                console.warn("Could not query Firebase collection:", err);
+            }
+        }
+
+        function mergeKnowledge(newItems) {
+            const existingIds = new Set(localKnowledge.map(item => item.title_badini));
+            const filteredNew = newItems.filter(item => !existingIds.has(item.title_badini));
+            localKnowledge = [...filteredNew, ...localKnowledge];
+            if (lastSearchTerm) performSearch(lastSearchTerm);
+        }
+
+        function setupEventListeners() {
+            document.getElementById('btn-theme-toggle').addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+            });
+
+            document.querySelectorAll('.kurdish-key').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const searchInput = document.getElementById('search-input');
+                    searchInput.value += btn.textContent.trim();
+                    searchInput.focus();
+                });
+            });
+
+            document.querySelectorAll('.tag-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const query = btn.getAttribute('data-query');
+                    document.getElementById('search-input').value = query;
+                    performSearch(query);
+                });
+            });
+
+            document.getElementById('search-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const term = document.getElementById('search-input').value.trim();
+                if (term) performSearch(term);
+            });
+
+            document.getElementById('ai-generate-btn').addEventListener('click', () => {
+                if (lastSearchTerm) generateAiSearch(lastSearchTerm);
+            });
+        }
+
+        function performSearch(query) {
+            lastSearchTerm = query;
+            const container = document.getElementById('results-container');
+            const header = document.getElementById('results-header');
+            const termSpan = document.getElementById('current-search-term');
+            const countSpan = document.getElementById('results-count');
+            const welcomeState = document.getElementById('welcome-state');
+            const aiBtn = document.getElementById('ai-generate-btn');
+
+            if (welcomeState) welcomeState.classList.add('hidden');
+
+            termSpan.textContent = `"${query}"`;
+            header.classList.remove('hidden');
+
+            const lower = query.toLowerCase();
+            const filtered = localKnowledge.filter(item => {
+                return (item.title_badini && item.title_badini.toLowerCase().includes(lower)) ||
+                       (item.content_badini && item.content_badini.toLowerCase().includes(lower)) ||
+                       (item.title_sorani && item.title_sorani.toLowerCase().includes(lower)) ||
+                       (item.title_english && item.title_english.toLowerCase().includes(lower));
+            });
+
+            countSpan.textContent = filtered.length;
+            container.innerHTML = '';
+
+            if (filtered.length > 0) {
+                aiBtn.classList.add('hidden');
+                filtered.forEach(item => {
+                    container.appendChild(createResultCard(item));
+                });
+            } else {
+                aiBtn.classList.remove('hidden');
+                container.innerHTML = `
+                    <div class="glass-card rounded-2xl p-8 text-center">
+                        <div class="w-12 h-12 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-3 text-amber-500">
+                            <i class="fa-solid fa-magnifying-glass-minus text-xl"></i>
+                        </div>
+                        <h4 class="font-bold text-lg mb-1">ئەنجام نەهاتنە لیتستکرن</h4>
+                        <p class="text-xs text-slate-500 mb-4">چ زانیاری دەربارەی "${query}" د داتابەیسێ دا نەهاتنە لیتستکرن.</p>
+                        <button onclick="generateAiSearch('${query}')" class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-lg inline-flex items-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            <span>دروستکرنا زانیاریان ب AI (بەهدینی + سۆرانی + English)</span>
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        function createResultCard(item) {
+            const card = document.createElement('div');
+            card.className = "glass-card rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-lg transition-all hover:border-emerald-500/50 space-y-4";
+
+            card.innerHTML = `
+                <div class="flex items-start justify-between border-b border-slate-200 dark:border-slate-800/80 pb-3">
+                    <div>
+                        <span class="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 mb-1">
+                            ${item.category || 'گشتی'}
+                        </span>
+                        <h3 class="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <span>${item.title_badini}</span>
+                        </h3>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="copyToClipboard('${escapeJsString(item.content_badini)}')" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-emerald-500 text-xs transition-colors" title="کۆپیکرن">
+                            <i class="fa-regular fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20 space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                                <i class="fa-solid fa-star text-[10px]"></i> کوردیا بەهدینی
+                            </span>
+                            <span class="text-[10px] text-slate-400">بادینی</span>
+                        </div>
+                        <p class="text-sm font-medium leading-relaxed text-slate-800 dark:text-slate-100">
+                            ${item.content_badini}
+                        </p>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-slate-100/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-teal-600 dark:text-teal-400 flex items-center gap-1.5">
+                                <i class="fa-solid fa-language text-[10px]"></i> کوردیا سۆرانی
+                            </span>
+                            <span class="text-[10px] text-slate-400">${item.title_sorani || ''}</span>
+                        </div>
+                        <p class="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                            ${item.content_sorani || item.content_badini}
+                        </p>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-slate-100/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1.5" dir="ltr">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                                <i class="fa-solid fa-globe text-[10px]"></i> English
+                            </span>
+                            <span class="text-[10px] text-slate-400 font-mono">${item.title_english || ''}</span>
+                        </div>
+                        <p class="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                            ${item.content_english || 'Translation unavailable.'}
+                        </p>
+                    </div>
+                </div>
+            `;
+            return card;
+        }
+
+        async function generateAiSearch(searchTerm) {
+            const spinner = document.getElementById('loading-spinner');
+            const container = document.getElementById('results-container');
+            
+            // Get stored custom key or default empty string (Canvas auto-injects empty key in fetch)
+            const storedKey = localStorage.getItem('gpk_gemini_key') || '';
+            const activeKey = storedKey || GEMINI_API_KEY || '';
+
+            spinner.classList.remove('hidden');
+
+            const systemPrompt = `You are GPKsearch AI engine specialized in Kurdish Badini language (written in Kurdish Arabic script).
+            When given a query, generate accurate, well-crafted details in 3 versions:
+            1. Badini Kurdish dialect (کوردیا بەهدینی - Badini dialect of Duhok/Zakho)
+            2. Sorani Kurdish dialect (کوردیا سۆرانی)
+            3. English language`;
+
+            const userQuery = `Provide information about "${searchTerm}" in Kurdish Badini, Kurdish Sorani, and English.`;
+
+            try {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${activeKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: userQuery }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] },
+                        generationConfig: { 
+                            responseMimeType: "application/json",
+                            responseSchema: {
+                                type: "OBJECT",
+                                properties: {
+                                    "title_badini": { "type": "STRING" },
+                                    "content_badini": { "type": "STRING" },
+                                    "title_sorani": { "type": "STRING" },
+                                    "content_sorani": { "type": "STRING" },
+                                    "title_english": { "type": "STRING" },
+                                    "content_english": { "type": "STRING" },
+                                    "category": { "type": "STRING" }
+                                },
+                                required: ["title_badini", "content_badini", "title_sorani", "content_sorani", "title_english", "content_english", "category"]
+                            }
+                        }
+                    })
+                });
+
+                const result = await response.json();
+                spinner.classList.add('hidden');
+
+                if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    const aiData = JSON.parse(result.candidates[0].content.parts[0].text);
+                    aiData.id = 'ai-' + Date.now();
+                    
+                    container.innerHTML = '';
+                    container.appendChild(createResultCard(aiData));
+                    showToast("زانیاریێن AI هاتنە بەرهەڤکرن ب سەرکەفتنی!", "success");
+                } else if (result.error) {
+                    console.error("Gemini API Error:", result.error);
+                    showToast("کێشەیەک د کلیلێ دا هەیە. دکۆما 'کلیلا AI' بکاربینە بۆ نووکرنێ.", "error");
+                    promptForNewApiKey(searchTerm);
+                } else {
+                    showToast("شەرمزارین، زانیاری نەهاتنە دیتن. دووبارە تاقیبکەوە", "error");
+                }
+            } catch (err) {
+                console.error("AI Generation error:", err);
+                spinner.classList.add('hidden');
+                showToast("کێشەیەک د تۆڕێ دا ڕوویدا د دروستکرنا وەڵامێ AI دا", "error");
+            }
+        }
+
+        function promptForNewApiKey(searchTerm = null) {
+            const current = localStorage.getItem('gpk_gemini_key') || '';
+            const userKey = prompt("تکایە کلیلا خوە یا بەلاش یا Gemini (ژ aistudio.google.com) بنڤیسە:", current);
+            if (userKey !== null) {
+                localStorage.setItem('gpk_gemini_key', userKey.trim());
+                showToast("کلیلا AI هاتە نووکرن ب سەرکەفتنی!", "success");
+                if (searchTerm) generateAiSearch(searchTerm);
+            }
+        }
+
+        function copyToClipboard(text) {
+            if (!text) return;
+            const tempInput = document.createElement('textarea');
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            showToast("دەق هاتە کۆپیکرن ب سەرکەفتیانە!", "success");
+        }
+
+        function showToast(message, type = "success") {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toast-msg');
+            const iconEl = document.getElementById('toast-icon');
+
+            msgEl.textContent = message;
+            if (type === "error") {
+                iconEl.className = "fa-solid fa-circle-exclamation text-rose-400 text-lg";
+            } else if (type === "info") {
+                iconEl.className = "fa-solid fa-circle-info text-amber-400 text-lg";
+            } else {
+                iconEl.className = "fa-solid fa-circle-check text-emerald-400 text-lg";
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        function escapeJsString(str) {
+            if (!str) return '';
+            return str.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, ' ');
+        }
+    </script>
+</body>
+</html>
